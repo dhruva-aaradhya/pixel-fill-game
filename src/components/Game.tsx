@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
-import { GameState, Level } from '@/types/game';
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { ContainerEdges, GameState, Level } from '@/types/game';
 import { createGameState, deployFromQueue, deployFromHolding, processConveyorTick } from '@/utils/gameLogic';
 import { MAX_CONVEYOR, TICK_MS } from '@/utils/trackPositions';
 import Board from './Board';
@@ -19,8 +19,33 @@ interface GameProps {
   onBack: () => void;
 }
 
+function computeContainerEdges(cmap: number[][]): ContainerEdges[][] {
+  const rows = cmap.length;
+  const cols = rows > 0 ? cmap[0].length : 0;
+  const result: ContainerEdges[][] = [];
+  for (let r = 0; r < rows; r++) {
+    const row: ContainerEdges[] = [];
+    for (let c = 0; c < cols; c++) {
+      const cid = cmap[r][c];
+      if (cid === 0) {
+        row.push({ top: false, right: false, bottom: false, left: false });
+      } else {
+        row.push({
+          top: r === 0 || cmap[r - 1][c] !== cid,
+          right: c === cols - 1 || cmap[r][c + 1] !== cid,
+          bottom: r === rows - 1 || cmap[r + 1][c] !== cid,
+          left: c === 0 || cmap[r][c - 1] !== cid,
+        });
+      }
+    }
+    result.push(row);
+  }
+  return result;
+}
+
 export default function Game({ level, levelNumber, onComplete, onBack }: GameProps) {
   const stateRef = useRef<GameState>(createGameState(level, levelNumber));
+  const edgesGrid = useMemo(() => computeContainerEdges(level.containerMap), [level]);
   const [, forceRender] = useReducer((x: number) => x + 1, 0);
   const [overlayStatus, setOverlayStatus] = useState<'won' | 'lost' | null>(null);
   const completedRef = useRef(false);
@@ -151,6 +176,7 @@ export default function Game({ level, levelNumber, onComplete, onBack }: GamePro
         capacity={s.capacity}
         recentHits={s.recentHits}
         recentSolidified={s.recentSolidified}
+        edgesGrid={edgesGrid}
       />
 
       <HoldingZone
