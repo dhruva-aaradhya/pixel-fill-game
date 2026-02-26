@@ -64,8 +64,9 @@ function CellComponent({ cell, color, capacity, hitSide, solidifySide }: CellPro
         opacity = 0.5;
         break;
       case 'unfilled':
-        bg = '#0e0e1e';
-        boxShadow = `inset 0 2px 6px rgba(0,0,0,0.7), inset 0 0 0 1.5px ${color ? color.hex + '30' : 'transparent'}`;
+        bg = color ? `${color.hex}18` : '#0e0e1e';
+        outline = `1.5px solid ${color ? color.hex + '55' : TRAY_WALL}`;
+        boxShadow = `inset 0 2px 6px rgba(0,0,0,0.5), inset 0 0 8px ${color ? color.hex + '20' : 'transparent'}`;
         break;
       case 'filling':
         bg = color
