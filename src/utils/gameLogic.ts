@@ -19,7 +19,12 @@ export function resetIdCounter(): void {
 
 const DIRS: [number, number][] = [[-1, 0], [1, 0], [0, -1], [0, 1]];
 
-function propagateExposure(grid: Cell[][]): void {
+function propagateExposure(grid: Cell[][], layerOrder: number[]): void {
+  const parentOf = new Map<number, number>();
+  for (let i = 1; i < layerOrder.length; i++) {
+    parentOf.set(layerOrder[i], layerOrder[i - 1]);
+  }
+
   const size = grid.length;
   let changed = true;
   while (changed) {
@@ -28,12 +33,14 @@ function propagateExposure(grid: Cell[][]): void {
       for (let c = 0; c < size; c++) {
         const cell = grid[r][c];
         if (cell.layer === 0 || cell.exposed) continue;
+        const parent = parentOf.get(cell.layer);
+        if (parent === undefined) continue;
         for (const [dr, dc] of DIRS) {
           const nr = r + dr;
           const nc = c + dc;
           if (nr < 0 || nr >= size || nc < 0 || nc >= size) continue;
           const neighbor = grid[nr][nc];
-          if (neighbor.layer > cell.layer && neighbor.solidified) {
+          if (neighbor.layer === parent && neighbor.solidified) {
             cell.exposed = true;
             changed = true;
             break;
@@ -301,7 +308,7 @@ export function processConveyorTick(state: GameState): GameState {
     newConveyor.push({ ...shooter, trackPos: newPos, ammo });
   }
 
-  propagateExposure(grid);
+  propagateExposure(grid, state.layerOrder);
 
   const exposedLayers = [...state.exposedLayers];
   for (const l of state.layerOrder) {
