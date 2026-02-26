@@ -50,36 +50,40 @@ function CellComponent({ cell, color, capacity, hitSide, solidifySide }: CellPro
   let outline: string | undefined;
   let boxShadow: string | undefined;
   let opacity: number | undefined;
-  const borderRadius = '4px';
+  let borderRadius = '4px';
 
   if (!isPartOfShape) {
     bg = 'transparent';
   } else {
-    outline = `1.5px solid ${TRAY_WALL}`;
-
     switch (state) {
       case 'hidden':
-        bg = color ? `${color.hex}10` : '#18182e';
-        outline = `1.5px solid ${color ? color.hex + '25' : TRAY_WALL}`;
-        boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.6)';
-        opacity = 0.45;
+        bg = color ? `${color.hex}18` : '#18182e';
+        outline = 'none';
+        boxShadow = `0 0 0 1px ${color ? color.hex + '20' : '#3a3a5e20'}`;
+        borderRadius = '1px';
+        opacity = 0.6;
         break;
       case 'unfilled':
-        bg = color ? `${color.hex}18` : '#0e0e1e';
-        outline = `1.5px solid ${color ? color.hex + '55' : TRAY_WALL}`;
-        boxShadow = `inset 0 2px 6px rgba(0,0,0,0.5), inset 0 0 8px ${color ? color.hex + '20' : 'transparent'}`;
+        bg = color ? `${color.hex}15` : '#0e0e1e';
+        outline = `2px solid ${color ? color.hex + '60' : TRAY_WALL}`;
+        boxShadow = `inset 0 2px 6px rgba(0,0,0,0.5), inset 0 0 10px ${color ? color.hex + '25' : 'transparent'}`;
+        borderRadius = '4px';
         break;
       case 'filling':
         bg = color
           ? `linear-gradient(to top, ${color.hex} ${fillPercent}%, #0e0e1e ${fillPercent}%)`
           : '#0e0e1e';
+        outline = `2px solid ${color ? color.hex + '60' : TRAY_WALL}`;
         boxShadow = `inset 0 1px 3px rgba(0,0,0,0.4), 0 0 8px ${color?.glow ?? 'transparent'}`;
+        borderRadius = '4px';
         break;
       case 'solidified':
         bg = color
-          ? `linear-gradient(135deg, ${color.hex} 40%, rgba(255,255,255,0.6) 120%)`
+          ? `linear-gradient(135deg, ${color.hex} 40%, rgba(255,255,255,0.25) 120%)`
           : '#fff';
-        boxShadow = `0 0 10px ${color?.glow ?? 'transparent'}, 0 1px 3px rgba(0,0,0,0.3), inset 0 1px 2px rgba(255,255,255,0.3)`;
+        outline = 'none';
+        boxShadow = `0 0 0 1.5px ${color?.hex ?? '#fff'}`;
+        borderRadius = '1px';
         break;
       default:
         bg = 'transparent';
