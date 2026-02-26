@@ -77,11 +77,11 @@ export default function ShooterLine({
                 </AnimatePresence>
 
                 {second && (
-                  <div className="opacity-40 scale-75 -mt-1">
+                  <div className="scale-[0.82] pointer-events-none" style={{ opacity: 0.55 }}>
                     <ShooterIcon
                       shooter={second}
                       colors={colors}
-                      disabled={true}
+                      disabled={false}
                       onClick={() => {}}
                     />
                   </div>
