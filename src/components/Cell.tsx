@@ -21,8 +21,20 @@ const FILL_ANIM_MAP: Record<TrackSide, string> = {
   bottom: 'animate-fill-from-top',
 };
 
-const EDGE_COLOR = 'rgba(0,0,0,0.55)';
-const EDGE_WIDTH = '1.5px';
+const SEPARATOR = '#0d0d20';
+
+function buildBorders(
+  edges: ContainerEdges,
+  innerColor: string,
+  innerWidth: string,
+): React.CSSProperties {
+  return {
+    borderTop: edges.top ? `2.5px solid ${SEPARATOR}` : `${innerWidth} solid ${innerColor}`,
+    borderRight: edges.right ? `2.5px solid ${SEPARATOR}` : `${innerWidth} solid ${innerColor}`,
+    borderBottom: edges.bottom ? `2.5px solid ${SEPARATOR}` : `${innerWidth} solid ${innerColor}`,
+    borderLeft: edges.left ? `2.5px solid ${SEPARATOR}` : `${innerWidth} solid ${innerColor}`,
+  };
+}
 
 function CellComponent({ cell, color, capacity, hitSide, solidifySide, containerEdges }: CellProps) {
   const ref = useRef<HTMLDivElement>(null);
@@ -49,65 +61,65 @@ function CellComponent({ cell, color, capacity, hitSide, solidifySide, container
   const isPartOfShape = cell.layer > 0;
 
   let bg: string;
-  let outline: string | undefined;
   let boxShadow: string | undefined;
   let opacity: number | undefined;
   let borderRadius = '4px';
+  let borderStyle: React.CSSProperties = {};
 
   if (!isPartOfShape) {
     bg = 'transparent';
   } else {
+    const hex = color?.hex ?? '#fff';
+
     switch (state) {
       case 'hidden':
-        bg = color ? `${color.hex}18` : '#18182e';
-        outline = 'none';
-        boxShadow = `0 0 0 1px ${color ? color.hex + '20' : '#3a3a5e20'}`;
+        bg = color ? `${hex}18` : '#18182e';
+        boxShadow = `0 0 0 1px ${hex}20`;
         borderRadius = '1px';
         opacity = 0.6;
         break;
+
       case 'unfilled':
-        bg = color ? `${color.hex}15` : '#0e0e1e';
-        outline = `2px solid ${color ? color.hex + '60' : '#3a3a5e'}`;
-        boxShadow = `inset 0 2px 6px rgba(0,0,0,0.5), inset 0 0 10px ${color ? color.hex + '25' : 'transparent'}`;
+        bg = color ? `${hex}15` : '#0e0e1e';
+        borderStyle = buildBorders(containerEdges, `${hex}60`, '2px');
+        boxShadow = `inset 0 2px 6px rgba(0,0,0,0.5), inset 0 0 10px ${hex}25`;
         borderRadius = '4px';
         break;
+
       case 'filling':
         bg = color
-          ? `linear-gradient(to top, ${color.hex} ${fillPercent}%, #0e0e1e ${fillPercent}%)`
+          ? `linear-gradient(to top, ${hex} ${fillPercent}%, #0e0e1e ${fillPercent}%)`
           : '#0e0e1e';
-        outline = `2px solid ${color ? color.hex + '60' : '#3a3a5e'}`;
+        borderStyle = buildBorders(containerEdges, `${hex}60`, '2px');
         boxShadow = `inset 0 1px 3px rgba(0,0,0,0.4), 0 0 8px ${color?.glow ?? 'transparent'}`;
         borderRadius = '4px';
         break;
+
       case 'solidified': {
         bg = color
-          ? `linear-gradient(135deg, ${color.hex} 40%, rgba(255,255,255,0.25) 120%)`
+          ? `linear-gradient(135deg, ${hex} 40%, rgba(255,255,255,0.25) 120%)`
           : '#fff';
-        outline = 'none';
 
-        const hex = color?.hex ?? '#fff';
         const shadowParts: string[] = [];
-
         if (!containerEdges.top) shadowParts.push(`0 -2px 0 0 ${hex}`);
         if (!containerEdges.bottom) shadowParts.push(`0 2px 0 0 ${hex}`);
         if (!containerEdges.left) shadowParts.push(`-2px 0 0 0 ${hex}`);
         if (!containerEdges.right) shadowParts.push(`2px 0 0 0 ${hex}`);
-
         boxShadow = shadowParts.length > 0 ? shadowParts.join(', ') : 'none';
+
+        borderStyle = {
+          borderTop: containerEdges.top ? `2.5px solid ${SEPARATOR}` : 'none',
+          borderRight: containerEdges.right ? `2.5px solid ${SEPARATOR}` : 'none',
+          borderBottom: containerEdges.bottom ? `2.5px solid ${SEPARATOR}` : 'none',
+          borderLeft: containerEdges.left ? `2.5px solid ${SEPARATOR}` : 'none',
+        };
+
         borderRadius = '1px';
         break;
       }
       default:
         bg = 'transparent';
     }
-  }
-
-  const borderStyle: React.CSSProperties = {};
-  if (isPartOfShape && cell.containerId > 0) {
-    if (containerEdges.top) borderStyle.borderTop = `${EDGE_WIDTH} solid ${EDGE_COLOR}`;
-    if (containerEdges.right) borderStyle.borderRight = `${EDGE_WIDTH} solid ${EDGE_COLOR}`;
-    if (containerEdges.bottom) borderStyle.borderBottom = `${EDGE_WIDTH} solid ${EDGE_COLOR}`;
-    if (containerEdges.left) borderStyle.borderLeft = `${EDGE_WIDTH} solid ${EDGE_COLOR}`;
   }
 
   return (
@@ -118,12 +130,11 @@ function CellComponent({ cell, color, capacity, hitSide, solidifySide, container
         width: CELL_SIZE,
         height: CELL_SIZE,
         background: bg,
-        outline,
         boxShadow,
         opacity,
         borderRadius,
-        ...borderStyle,
         boxSizing: 'border-box',
+        ...borderStyle,
       }}
     />
   );
