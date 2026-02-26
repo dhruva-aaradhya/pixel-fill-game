@@ -4,7 +4,7 @@ import {
   GameState,
   Level,
   Shooter,
-  ShooterColor,
+  TrackSide,
 } from '@/types/game';
 import { getTrackFiringRule, TRACK_LENGTH, TICK_MS, MAX_CONVEYOR, MAX_HOLDING } from './trackPositions';
 
@@ -67,7 +67,7 @@ export function createGameState(level: Level, levelNumber: number): GameState {
 function generateShooterQueues(
   grid: Cell[][],
   level: Level
-): Record<ShooterColor, Shooter[]> {
+): Shooter[][] {
   const cellCounts: Record<number, number> = {};
 
   for (const row of grid) {
@@ -78,62 +78,58 @@ function generateShooterQueues(
     }
   }
 
-  const queues: Record<string, Shooter[]> = {};
+  const allShooters: Shooter[] = [];
 
   for (const [layerStr, count] of Object.entries(cellCounts)) {
     const layer = parseInt(layerStr);
     const total = count * level.capacity;
     const color = level.colors[layer].name;
 
-    const shooters: Shooter[] = [];
     let remaining = total;
 
     while (remaining > 0) {
-      const maxAmmo = Math.min(40, remaining);
-      const minAmmo = Math.min(10, remaining);
-      // Skewed towards higher values: pow(random, 0.5) clusters near 1.0
+      const maxAmmo = Math.min(12, remaining);
+      const minAmmo = Math.min(4, remaining);
       const range = maxAmmo - minAmmo;
       const ammo = range > 0
-        ? minAmmo + Math.floor(range * Math.pow(Math.random(), 0.5))
+        ? minAmmo + Math.floor(Math.random() * (range + 1))
         : remaining;
-      shooters.push({ id: genId(), color, layer, ammo });
+      allShooters.push({ id: genId(), color, layer, ammo });
       remaining -= ammo;
     }
-
-    // Shuffle within each color queue
-    for (let i = shooters.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shooters[i], shooters[j]] = [shooters[j], shooters[i]];
-    }
-
-    queues[color] = shooters;
   }
 
-  // Ensure all colors have a queue (even if empty)
-  for (const layerNum of level.layerOrder) {
-    const color = level.colors[layerNum].name;
-    if (!queues[color]) queues[color] = [];
+  for (let i = allShooters.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [allShooters[i], allShooters[j]] = [allShooters[j], allShooters[i]];
   }
 
-  return queues as Record<ShooterColor, Shooter[]>;
+  const queues: Shooter[][] = [[], [], []];
+  for (let i = 0; i < allShooters.length; i++) {
+    queues[i % 3].push(allShooters[i]);
+  }
+
+  return queues;
 }
 
 export function deployFromQueue(
   state: GameState,
-  color: ShooterColor
+  queueIndex: number
 ): GameState {
   if (state.conveyor.length >= MAX_CONVEYOR) return state;
   if (state.status !== 'playing') return state;
 
-  const queue = state.queues[color];
+  const queue = state.queues[queueIndex];
   if (!queue || queue.length === 0) return state;
 
   const [shooter, ...rest] = queue;
   const convShooter: ConveyorShooter = { ...shooter, trackPos: -1 };
 
+  const newQueues = state.queues.map((q, i) => (i === queueIndex ? rest : q));
+
   return {
     ...state,
-    queues: { ...state.queues, [color]: rest },
+    queues: newQueues,
     conveyor: [...state.conveyor, convShooter],
     stats: {
       ...state.stats,
@@ -173,7 +169,7 @@ function getTargetAtPosition(
   grid: Cell[][],
   trackPos: number,
   layer: number
-): { row: number; col: number } | null {
+): { row: number; col: number; side: TrackSide } | null {
   const rule = getTrackFiringRule(trackPos);
   if (!rule) return null;
 
@@ -185,7 +181,7 @@ function getTargetAtPosition(
       for (let c = 0; c < size; c++) {
         const cell = grid[rowOrCol][c];
         if (cell.layer === layer && cell.exposed && !cell.solidified) {
-          return { row: rowOrCol, col: c };
+          return { row: rowOrCol, col: c, side };
         }
       }
       return null;
@@ -194,7 +190,7 @@ function getTargetAtPosition(
       for (let c = size - 1; c >= 0; c--) {
         const cell = grid[rowOrCol][c];
         if (cell.layer === layer && cell.exposed && !cell.solidified) {
-          return { row: rowOrCol, col: c };
+          return { row: rowOrCol, col: c, side };
         }
       }
       return null;
@@ -203,7 +199,7 @@ function getTargetAtPosition(
       for (let r = 0; r < size; r++) {
         const cell = grid[r][rowOrCol];
         if (cell.layer === layer && cell.exposed && !cell.solidified) {
-          return { row: r, col: rowOrCol };
+          return { row: r, col: rowOrCol, side };
         }
       }
       return null;
@@ -212,7 +208,7 @@ function getTargetAtPosition(
       for (let r = size - 1; r >= 0; r--) {
         const cell = grid[r][rowOrCol];
         if (cell.layer === layer && cell.exposed && !cell.solidified) {
-          return { row: r, col: rowOrCol };
+          return { row: r, col: rowOrCol, side };
         }
       }
       return null;
@@ -237,8 +233,8 @@ export function processConveyorTick(state: GameState): GameState {
 
   const newConveyor: ConveyorShooter[] = [];
   const toHolding: Shooter[] = [];
-  const hits: { row: number; col: number }[] = [];
-  const newlySolidified: { row: number; col: number }[] = [];
+  const hits: { row: number; col: number; side: TrackSide }[] = [];
+  const newlySolidified: { row: number; col: number; side: TrackSide }[] = [];
 
   for (const shooter of sorted) {
     const newPos = shooter.trackPos + 1;
@@ -261,11 +257,11 @@ export function processConveyorTick(state: GameState): GameState {
         const cell = grid[target.row][target.col];
         cell.hits++;
         ammo--;
-        hits.push(target);
+        hits.push({ row: target.row, col: target.col, side: target.side });
 
         if (cell.hits >= state.capacity && !cell.solidified) {
           cell.solidified = true;
-          newlySolidified.push(target);
+          newlySolidified.push({ row: target.row, col: target.col, side: target.side });
         }
       }
     }

@@ -133,3 +133,44 @@
 .animate-pulse-glow {
   animation: pulse-glow 2s ease-in-out infinite;
 }
+
+@keyframes fillFromRight {
+  0% { clip-path: inset(0 0 0 100%); transform: scale(1); }
+  70% { clip-path: inset(0); transform: scale(1); }
+  85% { clip-path: inset(0); transform: scale(1.08); }
+  100% { clip-path: inset(0); transform: scale(1); }
+}
+
+@keyframes fillFromLeft {
+  0% { clip-path: inset(0 100% 0 0); transform: scale(1); }
+  70% { clip-path: inset(0); transform: scale(1); }
+  85% { clip-path: inset(0); transform: scale(1.08); }
+  100% { clip-path: inset(0); transform: scale(1); }
+}
+
+@keyframes fillFromBottom {
+  0% { clip-path: inset(100% 0 0 0); transform: scale(1); }
+  70% { clip-path: inset(0); transform: scale(1); }
+  85% { clip-path: inset(0); transform: scale(1.08); }
+  100% { clip-path: inset(0); transform: scale(1); }
+}
+
+@keyframes fillFromTop {
+  0% { clip-path: inset(0 0 100% 0); transform: scale(1); }
+  70% { clip-path: inset(0); transform: scale(1); }
+  85% { clip-path: inset(0); transform: scale(1.08); }
+  100% { clip-path: inset(0); transform: scale(1); }
+}
+
+.animate-fill-from-right {
+  animation: fillFromRight 400ms ease-out forwards;
+}
+.animate-fill-from-left {
+  animation: fillFromLeft 400ms ease-out forwards;
+}
+.animate-fill-from-bottom {
+  animation: fillFromBottom 400ms ease-out forwards;
+}
+.animate-fill-from-top {
+  animation: fillFromTop 400ms ease-out forwards;
+}

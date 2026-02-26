@@ -38,7 +38,7 @@ export interface ConveyorShooter extends Shooter {
 export interface GameState {
   grid: Cell[][];
   exposedLayers: number[];
-  queues: Record<ShooterColor, Shooter[]>;
+  queues: Shooter[][];
   holding: (Shooter | null)[];
   conveyor: ConveyorShooter[];
   status: GameStatus;
@@ -46,8 +46,8 @@ export interface GameState {
   stats: GameStats;
   capacity: number;
   layerOrder: number[];
-  recentHits: { row: number; col: number }[];
-  recentSolidified: { row: number; col: number }[];
+  recentHits: { row: number; col: number; side: TrackSide }[];
+  recentSolidified: { row: number; col: number; side: TrackSide }[];
 }
 
 export interface GameStats {

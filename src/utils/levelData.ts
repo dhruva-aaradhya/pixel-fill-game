@@ -30,7 +30,7 @@ export const LEVELS: Level[] = [
     gridSize: 15,
     pixelMap: HEART_MAP,
     colors: COLORS,
-    capacity: 3,
+    capacity: 1,
     layerOrder: [3, 2, 1],
   },
 ];

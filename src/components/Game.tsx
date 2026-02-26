@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
-import { GameState, Level, ShooterColor } from '@/types/game';
+import { GameState, Level } from '@/types/game';
 import { createGameState, deployFromQueue, deployFromHolding, processConveyorTick } from '@/utils/gameLogic';
 import { MAX_CONVEYOR, TICK_MS } from '@/utils/trackPositions';
 import Board from './Board';
@@ -71,9 +71,9 @@ export default function Game({ level, levelNumber, onComplete, onBack }: GamePro
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [level, levelNumber]);
 
-  const handleDeployFromQueue = useCallback((color: ShooterColor) => {
+  const handleDeployFromQueue = useCallback((queueIndex: number) => {
     if (stateRef.current.status !== 'playing') return;
-    stateRef.current = deployFromQueue(stateRef.current, color);
+    stateRef.current = deployFromQueue(stateRef.current, queueIndex);
     forceRender();
   }, []);
 

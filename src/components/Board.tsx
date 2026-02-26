@@ -1,6 +1,6 @@
 'use client';
 
-import { Cell as CellType, ConveyorShooter, ColorConfig } from '@/types/game';
+import { Cell as CellType, ConveyorShooter, ColorConfig, TrackSide } from '@/types/game';
 import CellComponent from './Cell';
 import ConveyorTrack from './ConveyorTrack';
 import { CELL_SIZE, GAP, GRID_SIZE, TRACK_MARGIN, WRAPPER_SIZE } from '@/utils/trackPositions';
@@ -10,12 +10,17 @@ interface BoardProps {
   conveyor: ConveyorShooter[];
   colors: Record<number, ColorConfig>;
   capacity: number;
-  recentHits: { row: number; col: number }[];
-  recentSolidified: { row: number; col: number }[];
+  recentHits: { row: number; col: number; side: TrackSide }[];
+  recentSolidified: { row: number; col: number; side: TrackSide }[];
 }
 
-function isInSet(set: { row: number; col: number }[], row: number, col: number): boolean {
-  return set.some((s) => s.row === row && s.col === col);
+function findSide(
+  set: { row: number; col: number; side: TrackSide }[],
+  row: number,
+  col: number
+): TrackSide | null {
+  const entry = set.find((s) => s.row === row && s.col === col);
+  return entry ? entry.side : null;
 }
 
 export default function Board({
@@ -52,8 +57,8 @@ export default function Board({
               cell={cell}
               color={colorCfg}
               capacity={capacity}
-              isHit={isInSet(recentHits, cell.row, cell.col)}
-              justSolidified={isInSet(recentSolidified, cell.row, cell.col)}
+              hitSide={findSide(recentHits, cell.row, cell.col)}
+              solidifySide={findSide(recentSolidified, cell.row, cell.col)}
             />
           );
         })}
