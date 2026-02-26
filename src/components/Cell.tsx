@@ -1,7 +1,7 @@
 'use client';
 
 import { memo, useEffect, useRef } from 'react';
-import { Cell as CellType, ColorConfig, TrackSide } from '@/types/game';
+import { Cell as CellType, ColorConfig, ContainerEdges, TrackSide } from '@/types/game';
 import { getCellState } from '@/utils/gameLogic';
 import { CELL_SIZE } from '@/utils/trackPositions';
 
@@ -11,9 +11,8 @@ interface CellProps {
   capacity: number;
   hitSide: TrackSide | null;
   solidifySide: TrackSide | null;
+  containerEdges: ContainerEdges;
 }
-
-const TRAY_WALL = '#3a3a5e';
 
 const FILL_ANIM_MAP: Record<TrackSide, string> = {
   left: 'animate-fill-from-right',
@@ -22,7 +21,10 @@ const FILL_ANIM_MAP: Record<TrackSide, string> = {
   bottom: 'animate-fill-from-top',
 };
 
-function CellComponent({ cell, color, capacity, hitSide, solidifySide }: CellProps) {
+const EDGE_COLOR = 'rgba(0,0,0,0.55)';
+const EDGE_WIDTH = '1.5px';
+
+function CellComponent({ cell, color, capacity, hitSide, solidifySide, containerEdges }: CellProps) {
   const ref = useRef<HTMLDivElement>(null);
   const state = getCellState(cell);
 
@@ -65,7 +67,7 @@ function CellComponent({ cell, color, capacity, hitSide, solidifySide }: CellPro
         break;
       case 'unfilled':
         bg = color ? `${color.hex}15` : '#0e0e1e';
-        outline = `2px solid ${color ? color.hex + '60' : TRAY_WALL}`;
+        outline = `2px solid ${color ? color.hex + '60' : '#3a3a5e'}`;
         boxShadow = `inset 0 2px 6px rgba(0,0,0,0.5), inset 0 0 10px ${color ? color.hex + '25' : 'transparent'}`;
         borderRadius = '4px';
         break;
@@ -73,21 +75,39 @@ function CellComponent({ cell, color, capacity, hitSide, solidifySide }: CellPro
         bg = color
           ? `linear-gradient(to top, ${color.hex} ${fillPercent}%, #0e0e1e ${fillPercent}%)`
           : '#0e0e1e';
-        outline = `2px solid ${color ? color.hex + '60' : TRAY_WALL}`;
+        outline = `2px solid ${color ? color.hex + '60' : '#3a3a5e'}`;
         boxShadow = `inset 0 1px 3px rgba(0,0,0,0.4), 0 0 8px ${color?.glow ?? 'transparent'}`;
         borderRadius = '4px';
         break;
-      case 'solidified':
+      case 'solidified': {
         bg = color
           ? `linear-gradient(135deg, ${color.hex} 40%, rgba(255,255,255,0.25) 120%)`
           : '#fff';
         outline = 'none';
-        boxShadow = `0 0 0 2px ${color?.hex ?? '#fff'}`;
+
+        const hex = color?.hex ?? '#fff';
+        const shadowParts: string[] = [];
+
+        if (!containerEdges.top) shadowParts.push(`0 -2px 0 0 ${hex}`);
+        if (!containerEdges.bottom) shadowParts.push(`0 2px 0 0 ${hex}`);
+        if (!containerEdges.left) shadowParts.push(`-2px 0 0 0 ${hex}`);
+        if (!containerEdges.right) shadowParts.push(`2px 0 0 0 ${hex}`);
+
+        boxShadow = shadowParts.length > 0 ? shadowParts.join(', ') : 'none';
         borderRadius = '1px';
         break;
+      }
       default:
         bg = 'transparent';
     }
+  }
+
+  const borderStyle: React.CSSProperties = {};
+  if (isPartOfShape && cell.containerId > 0) {
+    if (containerEdges.top) borderStyle.borderTop = `${EDGE_WIDTH} solid ${EDGE_COLOR}`;
+    if (containerEdges.right) borderStyle.borderRight = `${EDGE_WIDTH} solid ${EDGE_COLOR}`;
+    if (containerEdges.bottom) borderStyle.borderBottom = `${EDGE_WIDTH} solid ${EDGE_COLOR}`;
+    if (containerEdges.left) borderStyle.borderLeft = `${EDGE_WIDTH} solid ${EDGE_COLOR}`;
   }
 
   return (
@@ -102,6 +122,8 @@ function CellComponent({ cell, color, capacity, hitSide, solidifySide }: CellPro
         boxShadow,
         opacity,
         borderRadius,
+        ...borderStyle,
+        boxSizing: 'border-box',
       }}
     />
   );
@@ -112,7 +134,9 @@ export default memo(CellComponent, (prev, next) => {
     prev.cell.hits === next.cell.hits &&
     prev.cell.solidified === next.cell.solidified &&
     prev.cell.exposed === next.cell.exposed &&
+    prev.cell.containerId === next.cell.containerId &&
     prev.hitSide === next.hitSide &&
-    prev.solidifySide === next.solidifySide
+    prev.solidifySide === next.solidifySide &&
+    prev.containerEdges === next.containerEdges
   );
 });

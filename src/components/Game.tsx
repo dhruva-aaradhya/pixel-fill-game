@@ -24,15 +24,17 @@ export default function Game({ level, levelNumber, onComplete, onBack }: GamePro
   const [, forceRender] = useReducer((x: number) => x + 1, 0);
   const [overlayStatus, setOverlayStatus] = useState<'won' | 'lost' | null>(null);
   const completedRef = useRef(false);
-  const [layerNotice, setLayerNotice] = useState<string | null>(null);
-  const prevExposedCount = useRef(1);
+  const [containerNotice, setContainerNotice] = useState<string | null>(null);
+  const prevExposedIds = useRef<Set<number>>(
+    new Set(stateRef.current.exposedContainers)
+  );
 
   useEffect(() => {
     stateRef.current = createGameState(level, levelNumber);
     completedRef.current = false;
-    prevExposedCount.current = 1;
+    prevExposedIds.current = new Set(stateRef.current.exposedContainers);
     setOverlayStatus(null);
-    setLayerNotice(null);
+    setContainerNotice(null);
     forceRender();
   }, [level, levelNumber]);
 
@@ -51,7 +53,7 @@ export default function Game({ level, levelNumber, onComplete, onBack }: GamePro
 
       let ticked = false;
       while (acc >= TICK_MS) {
-        stateRef.current = processConveyorTick(stateRef.current);
+        stateRef.current = processConveyorTick(stateRef.current, level);
         acc -= TICK_MS;
         ticked = true;
       }
@@ -59,14 +61,15 @@ export default function Game({ level, levelNumber, onComplete, onBack }: GamePro
       if (ticked) {
         const s = stateRef.current;
 
-        if (s.exposedLayers.length > prevExposedCount.current) {
-          prevExposedCount.current = s.exposedLayers.length;
-          const newest = s.exposedLayers[s.exposedLayers.length - 1];
-          const cfg = level.colors[newest];
-          if (cfg) {
-            const name = cfg.name.charAt(0).toUpperCase() + cfg.name.slice(1);
-            setLayerNotice(name);
-            setTimeout(() => setLayerNotice(null), 2500);
+        const newlyExposed = s.exposedContainers.filter(
+          (id) => !prevExposedIds.current.has(id)
+        );
+        if (newlyExposed.length > 0) {
+          for (const id of s.exposedContainers) prevExposedIds.current.add(id);
+          const cdef = level.containers.find((c) => c.id === newlyExposed[0]);
+          if (cdef) {
+            setContainerNotice(cdef.name);
+            setTimeout(() => setContainerNotice(null), 2500);
           }
         }
 
@@ -136,7 +139,7 @@ export default function Game({ level, levelNumber, onComplete, onBack }: GamePro
         status={s.status}
         conveyorCount={s.conveyor.length}
         conveyorFull={conveyorFull}
-        layerNotice={layerNotice}
+        containerNotice={containerNotice}
         queuesEmpty={queuesEmpty}
         holdingHasShooters={holdingHasShooters}
       />

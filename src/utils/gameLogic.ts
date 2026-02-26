@@ -20,6 +20,12 @@ export function resetIdCounter(): void {
 export function createGameState(level: Level, levelNumber: number): GameState {
   resetIdCounter();
 
+  const initialContainers = level.containers
+    .filter((c) => (level.containerDeps[c.id] ?? []).length === 0)
+    .map((c) => c.id);
+
+  const exposedSet = new Set(initialContainers);
+
   const grid: Cell[][] = [];
   let totalCells = 0;
 
@@ -27,14 +33,16 @@ export function createGameState(level: Level, levelNumber: number): GameState {
     const row: Cell[] = [];
     for (let c = 0; c < level.gridSize; c++) {
       const layer = level.pixelMap[r][c];
+      const containerId = level.containerMap[r][c];
       if (layer > 0) totalCells++;
       row.push({
         row: r,
         col: c,
         layer,
+        containerId,
         hits: 0,
         solidified: false,
-        exposed: layer === level.layerOrder[0],
+        exposed: exposedSet.has(containerId),
       });
     }
     grid.push(row);
@@ -44,7 +52,7 @@ export function createGameState(level: Level, levelNumber: number): GameState {
 
   return {
     grid,
-    exposedLayers: [level.layerOrder[0]],
+    exposedContainers: initialContainers,
     queues,
     holding: Array(MAX_HOLDING).fill(null),
     conveyor: [],
@@ -216,7 +224,7 @@ function getTargetAtPosition(
   return { row: blocker.row, col: blocker.col, side };
 }
 
-export function processConveyorTick(state: GameState): GameState {
+export function processConveyorTick(state: GameState, level: Level): GameState {
   if (state.status !== 'playing') return state;
 
   if (state.conveyor.length === 0) {
@@ -225,7 +233,7 @@ export function processConveyorTick(state: GameState): GameState {
       recentHits: [],
       recentSolidified: [],
       stats: { ...state.stats, elapsedMs: state.stats.elapsedMs + TICK_MS },
-    };
+    } as GameState;
   }
 
   const grid = state.grid.map((row) => row.map((cell) => ({ ...cell })));
@@ -272,29 +280,40 @@ export function processConveyorTick(state: GameState): GameState {
     newConveyor.push({ ...shooter, trackPos: newPos, ammo });
   }
 
-  let exposedLayers = [...state.exposedLayers];
-  let layerChanged = true;
-  while (layerChanged) {
-    layerChanged = false;
-    const currentFront = exposedLayers[exposedLayers.length - 1];
-    const currentIdx = state.layerOrder.indexOf(currentFront);
+  const exposedSet = new Set(state.exposedContainers);
 
-    if (currentIdx < state.layerOrder.length - 1) {
-      const allDone = grid.every((row) =>
-        row.every((cell) => cell.layer !== currentFront || cell.solidified)
-      );
-      if (allDone) {
-        const nextLayer = state.layerOrder[currentIdx + 1];
-        exposedLayers = [...exposedLayers, nextLayer];
-        for (const row of grid) {
-          for (const cell of row) {
-            if (cell.layer === nextLayer) cell.exposed = true;
-          }
-        }
-        layerChanged = true;
+  const containerDone = new Map<number, boolean>();
+  for (const cdef of level.containers) {
+    containerDone.set(cdef.id, true);
+  }
+  for (const row of grid) {
+    for (const cell of row) {
+      if (cell.containerId > 0 && !cell.solidified) {
+        containerDone.set(cell.containerId, false);
       }
     }
   }
+
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const cdef of level.containers) {
+      if (exposedSet.has(cdef.id)) continue;
+      const deps = level.containerDeps[cdef.id] ?? [];
+      const allDepsDone = deps.every((d) => containerDone.get(d) === true);
+      if (allDepsDone) {
+        exposedSet.add(cdef.id);
+        for (const row of grid) {
+          for (const cell of row) {
+            if (cell.containerId === cdef.id) cell.exposed = true;
+          }
+        }
+        changed = true;
+      }
+    }
+  }
+
+  const exposedContainers = Array.from(exposedSet);
 
   const newHolding = [...state.holding];
   let lost = false;
@@ -317,7 +336,7 @@ export function processConveyorTick(state: GameState): GameState {
   return {
     ...state,
     grid,
-    exposedLayers,
+    exposedContainers,
     conveyor: newConveyor,
     holding: newHolding,
     status: lost ? 'lost' : won ? 'won' : 'playing',

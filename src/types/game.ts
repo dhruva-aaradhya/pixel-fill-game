@@ -15,10 +15,24 @@ export interface ColorConfig {
   glow: string;
 }
 
+export interface ContainerDef {
+  id: number;
+  layer: number;
+  name: string;
+}
+
+export interface ContainerEdges {
+  top: boolean;
+  right: boolean;
+  bottom: boolean;
+  left: boolean;
+}
+
 export interface Cell {
   row: number;
   col: number;
   layer: number;
+  containerId: number;
   hits: number;
   solidified: boolean;
   exposed: boolean;
@@ -37,7 +51,7 @@ export interface ConveyorShooter extends Shooter {
 
 export interface GameState {
   grid: Cell[][];
-  exposedLayers: number[];
+  exposedContainers: number[];
   queues: Shooter[][];
   holding: (Shooter | null)[];
   conveyor: ConveyorShooter[];
@@ -62,6 +76,9 @@ export interface Level {
   name: string;
   gridSize: number;
   pixelMap: number[][];
+  containerMap: number[][];
+  containers: ContainerDef[];
+  containerDeps: Record<number, number[]>;
   colors: Record<number, ColorConfig>;
   capacity: number;
   layerOrder: number[];
