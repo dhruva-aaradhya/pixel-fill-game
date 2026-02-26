@@ -40,7 +40,10 @@ function propagateExposure(grid: Cell[][], layerOrder: number[]): void {
           const nc = c + dc;
           if (nr < 0 || nr >= size || nc < 0 || nc >= size) continue;
           const neighbor = grid[nr][nc];
-          if (neighbor.layer === parent && neighbor.solidified) {
+          if (
+            (neighbor.layer === parent && neighbor.solidified) ||
+            (neighbor.layer === cell.layer && neighbor.solidified && neighbor.exposed)
+          ) {
             cell.exposed = true;
             changed = true;
             break;
