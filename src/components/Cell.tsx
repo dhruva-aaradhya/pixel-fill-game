@@ -82,7 +82,7 @@ function CellComponent({ cell, color, capacity, hitSide, solidifySide }: CellPro
           ? `linear-gradient(135deg, ${color.hex} 40%, rgba(255,255,255,0.25) 120%)`
           : '#fff';
         outline = 'none';
-        boxShadow = `0 0 0 1.5px ${color?.hex ?? '#fff'}`;
+        boxShadow = `0 0 0 2px ${color?.hex ?? '#fff'}`;
         borderRadius = '1px';
         break;
       default:
