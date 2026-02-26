@@ -24,11 +24,15 @@ export default function Game({ level, levelNumber, onComplete, onBack }: GamePro
   const [, forceRender] = useReducer((x: number) => x + 1, 0);
   const [overlayStatus, setOverlayStatus] = useState<'won' | 'lost' | null>(null);
   const completedRef = useRef(false);
+  const [layerNotice, setLayerNotice] = useState<string | null>(null);
+  const prevExposedCount = useRef(1);
 
   useEffect(() => {
     stateRef.current = createGameState(level, levelNumber);
     completedRef.current = false;
+    prevExposedCount.current = 1;
     setOverlayStatus(null);
+    setLayerNotice(null);
     forceRender();
   }, [level, levelNumber]);
 
@@ -37,10 +41,13 @@ export default function Game({ level, levelNumber, onComplete, onBack }: GamePro
     let acc = 0;
     let frameId: number;
 
+    const MAX_TICKS_PER_FRAME = 3;
+
     const loop = (t: number) => {
       if (!last) last = t;
       acc += t - last;
       last = t;
+      if (acc > TICK_MS * MAX_TICKS_PER_FRAME) acc = TICK_MS * MAX_TICKS_PER_FRAME;
 
       let ticked = false;
       while (acc >= TICK_MS) {
@@ -50,9 +57,21 @@ export default function Game({ level, levelNumber, onComplete, onBack }: GamePro
       }
 
       if (ticked) {
+        const s = stateRef.current;
+
+        if (s.exposedLayers.length > prevExposedCount.current) {
+          prevExposedCount.current = s.exposedLayers.length;
+          const newest = s.exposedLayers[s.exposedLayers.length - 1];
+          const cfg = level.colors[newest];
+          if (cfg) {
+            const name = cfg.name.charAt(0).toUpperCase() + cfg.name.slice(1);
+            setLayerNotice(name);
+            setTimeout(() => setLayerNotice(null), 2500);
+          }
+        }
+
         forceRender();
 
-        const s = stateRef.current;
         if (!completedRef.current && (s.status === 'won' || s.status === 'lost')) {
           completedRef.current = true;
           const won = s.status === 'won';
@@ -93,12 +112,8 @@ export default function Game({ level, levelNumber, onComplete, onBack }: GamePro
   const s = stateRef.current;
   const conveyorFull = s.conveyor.length >= MAX_CONVEYOR;
 
-  const layerJustOpened = (() => {
-    if (s.exposedLayers.length <= 1) return null;
-    const newest = s.exposedLayers[s.exposedLayers.length - 1];
-    const cfg = level.colors[newest];
-    return cfg ? cfg.name.charAt(0).toUpperCase() + cfg.name.slice(1) : null;
-  })();
+  const queuesEmpty = s.queues.every((q) => q.length === 0);
+  const holdingHasShooters = s.holding.some((h) => h !== null);
 
   return (
     <div className="relative flex flex-col items-center gap-4 py-4 px-2 max-w-[520px] mx-auto select-none">
@@ -121,7 +136,9 @@ export default function Game({ level, levelNumber, onComplete, onBack }: GamePro
         status={s.status}
         conveyorCount={s.conveyor.length}
         conveyorFull={conveyorFull}
-        layerJustOpened={layerJustOpened}
+        layerNotice={layerNotice}
+        queuesEmpty={queuesEmpty}
+        holdingHasShooters={holdingHasShooters}
       />
 
       <Board
@@ -138,6 +155,7 @@ export default function Game({ level, levelNumber, onComplete, onBack }: GamePro
         colors={level.colors}
         onDeploy={handleDeployFromHolding}
         conveyorFull={conveyorFull}
+        highlight={queuesEmpty && holdingHasShooters && s.status === 'playing'}
       />
 
       <ShooterLine

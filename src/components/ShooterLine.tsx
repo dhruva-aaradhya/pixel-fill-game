@@ -92,7 +92,7 @@ export default function ShooterLine({
                 className="text-[10px] font-medium"
                 style={{ color: done ? 'rgba(255,255,255,0.2)' : (frontCfg?.hex ?? '#fff') }}
               >
-                {done ? 'Done' : remaining > 0 ? `+${remaining}` : second ? 'Last 2' : 'Last'}
+                {done ? 'Empty' : remaining > 0 ? `+${remaining}` : second ? 'Last 2' : 'Last'}
               </span>
             </div>
           );

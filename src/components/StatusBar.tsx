@@ -7,14 +7,18 @@ interface StatusBarProps {
   status: GameStatus;
   conveyorCount: number;
   conveyorFull: boolean;
-  layerJustOpened: string | null;
+  layerNotice: string | null;
+  queuesEmpty: boolean;
+  holdingHasShooters: boolean;
 }
 
 export default function StatusBar({
   status,
   conveyorCount,
   conveyorFull,
-  layerJustOpened,
+  layerNotice,
+  queuesEmpty,
+  holdingHasShooters,
 }: StatusBarProps) {
   let message: string;
 
@@ -22,10 +26,14 @@ export default function StatusBar({
     message = 'Picture Complete!';
   } else if (status === 'lost') {
     message = 'Holding zone full — Game Over!';
-  } else if (layerJustOpened) {
-    message = `${layerJustOpened} layer unlocked!`;
+  } else if (layerNotice) {
+    message = `${layerNotice} layer unlocked!`;
   } else if (conveyorFull) {
     message = `Conveyor full (${conveyorCount}/${MAX_CONVEYOR}) — wait for a shooter to finish`;
+  } else if (queuesEmpty && holdingHasShooters) {
+    message = 'Tap a shooter in the holding zone to re-deploy it!';
+  } else if (queuesEmpty && conveyorCount > 0) {
+    message = 'Shooters completing their laps...';
   } else {
     message = 'Tap a shooter to send it around the board';
   }

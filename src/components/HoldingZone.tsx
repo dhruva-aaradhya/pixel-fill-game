@@ -10,6 +10,7 @@ interface HoldingZoneProps {
   colors: Record<number, ColorConfig>;
   onDeploy: (shooterId: string) => void;
   conveyorFull: boolean;
+  highlight: boolean;
 }
 
 export default function HoldingZone({
@@ -17,6 +18,7 @@ export default function HoldingZone({
   colors,
   onDeploy,
   conveyorFull,
+  highlight,
 }: HoldingZoneProps) {
   const occupied = holding.filter(Boolean).length;
 
@@ -25,7 +27,12 @@ export default function HoldingZone({
       <div className="text-xs text-white/40 uppercase tracking-wider font-medium">
         Holding {occupied}/{MAX_HOLDING}
       </div>
-      <div className="flex gap-3 items-center justify-center min-h-[46px]">
+      <div
+        className={`flex gap-3 items-center justify-center min-h-[46px] rounded-xl px-3 py-1 transition-all duration-300 ${
+          highlight ? 'ring-2 ring-[#e0aaff]/50 animate-pulse-glow' : ''
+        }`}
+        style={highlight ? ({ '--glow-color': 'rgba(224,170,255,0.4)' } as React.CSSProperties) : undefined}
+      >
         {holding.map((shooter, i) => (
           <div key={i} className="relative">
             <AnimatePresence mode="wait">
