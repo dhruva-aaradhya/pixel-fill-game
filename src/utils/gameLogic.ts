@@ -165,6 +165,40 @@ export function deployFromHolding(
   };
 }
 
+function firstCellInPath(
+  grid: Cell[][],
+  rowOrCol: number,
+  side: TrackSide
+): Cell | null {
+  const size = grid.length;
+  switch (side) {
+    case 'left':
+      for (let c = 0; c < size; c++) {
+        const cell = grid[rowOrCol][c];
+        if (cell.layer > 0 && !cell.solidified) return cell;
+      }
+      return null;
+    case 'right':
+      for (let c = size - 1; c >= 0; c--) {
+        const cell = grid[rowOrCol][c];
+        if (cell.layer > 0 && !cell.solidified) return cell;
+      }
+      return null;
+    case 'top':
+      for (let r = 0; r < size; r++) {
+        const cell = grid[r][rowOrCol];
+        if (cell.layer > 0 && !cell.solidified) return cell;
+      }
+      return null;
+    case 'bottom':
+      for (let r = size - 1; r >= 0; r--) {
+        const cell = grid[r][rowOrCol];
+        if (cell.layer > 0 && !cell.solidified) return cell;
+      }
+      return null;
+  }
+}
+
 function getTargetAtPosition(
   grid: Cell[][],
   trackPos: number,
@@ -174,45 +208,12 @@ function getTargetAtPosition(
   if (!rule) return null;
 
   const { side, rowOrCol } = rule;
-  const size = grid.length;
+  const blocker = firstCellInPath(grid, rowOrCol, side);
 
-  switch (side) {
-    case 'left':
-      for (let c = 0; c < size; c++) {
-        const cell = grid[rowOrCol][c];
-        if (cell.layer === layer && cell.exposed && !cell.solidified) {
-          return { row: rowOrCol, col: c, side };
-        }
-      }
-      return null;
+  if (!blocker) return null;
+  if (blocker.layer !== layer || !blocker.exposed) return null;
 
-    case 'right':
-      for (let c = size - 1; c >= 0; c--) {
-        const cell = grid[rowOrCol][c];
-        if (cell.layer === layer && cell.exposed && !cell.solidified) {
-          return { row: rowOrCol, col: c, side };
-        }
-      }
-      return null;
-
-    case 'top':
-      for (let r = 0; r < size; r++) {
-        const cell = grid[r][rowOrCol];
-        if (cell.layer === layer && cell.exposed && !cell.solidified) {
-          return { row: r, col: rowOrCol, side };
-        }
-      }
-      return null;
-
-    case 'bottom':
-      for (let r = size - 1; r >= 0; r--) {
-        const cell = grid[r][rowOrCol];
-        if (cell.layer === layer && cell.exposed && !cell.solidified) {
-          return { row: r, col: rowOrCol, side };
-        }
-      }
-      return null;
-  }
+  return { row: blocker.row, col: blocker.col, side };
 }
 
 export function processConveyorTick(state: GameState): GameState {
