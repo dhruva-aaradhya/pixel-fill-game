@@ -13,10 +13,11 @@ interface CellProps {
   justSolidified: boolean;
 }
 
+const TRAY_WALL = '#3a3a5e';
+
 function CellComponent({ cell, color, capacity, isHit, justSolidified }: CellProps) {
   const ref = useRef<HTMLDivElement>(null);
   const state = getCellState(cell);
-  const prevSolidified = useRef(cell.solidified);
 
   useEffect(() => {
     if (justSolidified && ref.current) {
@@ -34,54 +35,61 @@ function CellComponent({ cell, color, capacity, isHit, justSolidified }: CellPro
     }
   }, [isHit, state]);
 
-  useEffect(() => {
-    prevSolidified.current = cell.solidified;
-  }, [cell.solidified]);
-
   const fillPercent = capacity > 0 ? (cell.hits / capacity) * 100 : 0;
+  const isPartOfShape = cell.layer > 0;
 
   let bg: string;
-  let border: string | undefined;
+  let outline: string | undefined;
   let boxShadow: string | undefined;
   let opacity: number | undefined;
+  let borderRadius = '4px';
 
-  switch (state) {
-    case 'empty':
-      bg = '#1e1e3a';
-      break;
-    case 'hidden':
-      bg = '#111122';
-      opacity = 0.3;
-      break;
-    case 'unfilled':
-      bg = '#0d0d1a';
-      border = color ? `2px solid ${color.hex}44` : undefined;
-      break;
-    case 'filling':
-      bg = color
-        ? `linear-gradient(to top, ${color.hex} ${fillPercent}%, #0d0d1a ${fillPercent}%)`
-        : '#0d0d1a';
-      boxShadow = color ? `0 0 6px ${color.glow}` : undefined;
-      break;
-    case 'solidified':
-      bg = color
-        ? `linear-gradient(135deg, ${color.hex} 55%, rgba(255,255,255,0.7) 130%)`
-        : '#fff';
-      boxShadow = color ? `0 0 10px ${color.glow}, inset 0 0 4px rgba(255,255,255,0.3)` : undefined;
-      break;
+  if (!isPartOfShape) {
+    // Empty cell — fully transparent, invisible
+    bg = 'transparent';
+  } else {
+    // All shape cells get the tray wall outline
+    outline = `1.5px solid ${TRAY_WALL}`;
+
+    switch (state) {
+      case 'hidden':
+        bg = '#18182e';
+        boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.6)';
+        opacity = 0.5;
+        break;
+      case 'unfilled':
+        bg = '#0e0e1e';
+        boxShadow = `inset 0 2px 6px rgba(0,0,0,0.7), inset 0 0 0 1.5px ${color ? color.hex + '30' : 'transparent'}`;
+        break;
+      case 'filling':
+        bg = color
+          ? `linear-gradient(to top, ${color.hex} ${fillPercent}%, #0e0e1e ${fillPercent}%)`
+          : '#0e0e1e';
+        boxShadow = `inset 0 1px 3px rgba(0,0,0,0.4), 0 0 8px ${color?.glow ?? 'transparent'}`;
+        break;
+      case 'solidified':
+        bg = color
+          ? `linear-gradient(135deg, ${color.hex} 40%, rgba(255,255,255,0.6) 120%)`
+          : '#fff';
+        boxShadow = `0 0 10px ${color?.glow ?? 'transparent'}, 0 1px 3px rgba(0,0,0,0.3), inset 0 1px 2px rgba(255,255,255,0.3)`;
+        break;
+      default:
+        bg = 'transparent';
+    }
   }
 
   return (
     <div
       ref={ref}
-      className="rounded-[4px] transition-[background,box-shadow,opacity] duration-150"
+      className="transition-[background,box-shadow,opacity] duration-150"
       style={{
         width: CELL_SIZE,
         height: CELL_SIZE,
         background: bg,
-        border,
+        outline,
         boxShadow,
         opacity,
+        borderRadius,
       }}
     />
   );

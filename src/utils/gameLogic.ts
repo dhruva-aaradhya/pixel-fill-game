@@ -4,6 +4,7 @@ import {
   GameState,
   Level,
   Shooter,
+  ShooterColor,
 } from '@/types/game';
 import { getTrackFiringRule, TRACK_LENGTH, TICK_MS, MAX_CONVEYOR, MAX_HOLDING } from './trackPositions';
 
@@ -39,12 +40,12 @@ export function createGameState(level: Level, levelNumber: number): GameState {
     grid.push(row);
   }
 
-  const line = generateShooterPool(grid, level);
+  const queues = generateShooterQueues(grid, level);
 
   return {
     grid,
     exposedLayers: [level.layerOrder[0]],
-    line,
+    queues,
     holding: Array(MAX_HOLDING).fill(null),
     conveyor: [],
     status: 'playing',
@@ -63,7 +64,10 @@ export function createGameState(level: Level, levelNumber: number): GameState {
   };
 }
 
-function generateShooterPool(grid: Cell[][], level: Level): Shooter[] {
+function generateShooterQueues(
+  grid: Cell[][],
+  level: Level
+): Record<ShooterColor, Shooter[]> {
   const cellCounts: Record<number, number> = {};
 
   for (const row of grid) {
@@ -74,61 +78,88 @@ function generateShooterPool(grid: Cell[][], level: Level): Shooter[] {
     }
   }
 
-  const all: Shooter[] = [];
+  const queues: Record<string, Shooter[]> = {};
 
   for (const [layerStr, count] of Object.entries(cellCounts)) {
     const layer = parseInt(layerStr);
     const total = count * level.capacity;
     const color = level.colors[layer].name;
 
+    const shooters: Shooter[] = [];
     let remaining = total;
+
     while (remaining > 0) {
-      const max = Math.min(9, remaining);
-      const min = Math.min(4, remaining);
-      const ammo = min + Math.floor(Math.random() * (max - min + 1));
-      all.push({ id: genId(), color, layer, ammo });
+      const maxAmmo = Math.min(40, remaining);
+      const minAmmo = Math.min(10, remaining);
+      // Skewed towards higher values: pow(random, 0.5) clusters near 1.0
+      const range = maxAmmo - minAmmo;
+      const ammo = range > 0
+        ? minAmmo + Math.floor(range * Math.pow(Math.random(), 0.5))
+        : remaining;
+      shooters.push({ id: genId(), color, layer, ammo });
       remaining -= ammo;
     }
+
+    // Shuffle within each color queue
+    for (let i = shooters.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shooters[i], shooters[j]] = [shooters[j], shooters[i]];
+    }
+
+    queues[color] = shooters;
   }
 
-  for (let i = all.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [all[i], all[j]] = [all[j], all[i]];
+  // Ensure all colors have a queue (even if empty)
+  for (const layerNum of level.layerOrder) {
+    const color = level.colors[layerNum].name;
+    if (!queues[color]) queues[color] = [];
   }
 
-  return all;
+  return queues as Record<ShooterColor, Shooter[]>;
 }
 
-export function deployShooter(
+export function deployFromQueue(
   state: GameState,
-  shooterId: string,
-  source: 'line' | 'holding'
+  color: ShooterColor
 ): GameState {
   if (state.conveyor.length >= MAX_CONVEYOR) return state;
   if (state.status !== 'playing') return state;
 
-  let shooter: Shooter | null = null;
-  let newLine = state.line;
-  const newHolding = [...state.holding];
+  const queue = state.queues[color];
+  if (!queue || queue.length === 0) return state;
 
-  if (source === 'line') {
-    const idx = state.line.findIndex((s) => s.id === shooterId);
-    if (idx === -1) return state;
-    shooter = state.line[idx];
-    newLine = [...state.line];
-    newLine.splice(idx, 1);
-  } else {
-    const idx = state.holding.findIndex((s) => s !== null && s.id === shooterId);
-    if (idx === -1) return state;
-    shooter = state.holding[idx]!;
-    newHolding[idx] = null;
-  }
+  const [shooter, ...rest] = queue;
+  const convShooter: ConveyorShooter = { ...shooter, trackPos: -1 };
+
+  return {
+    ...state,
+    queues: { ...state.queues, [color]: rest },
+    conveyor: [...state.conveyor, convShooter],
+    stats: {
+      ...state.stats,
+      shootersDeployed: state.stats.shootersDeployed + 1,
+    },
+  };
+}
+
+export function deployFromHolding(
+  state: GameState,
+  shooterId: string
+): GameState {
+  if (state.conveyor.length >= MAX_CONVEYOR) return state;
+  if (state.status !== 'playing') return state;
+
+  const idx = state.holding.findIndex((s) => s !== null && s.id === shooterId);
+  if (idx === -1) return state;
+
+  const shooter = state.holding[idx]!;
+  const newHolding = [...state.holding];
+  newHolding[idx] = null;
 
   const convShooter: ConveyorShooter = { ...shooter, trackPos: -1 };
 
   return {
     ...state,
-    line: newLine,
     holding: newHolding,
     conveyor: [...state.conveyor, convShooter],
     stats: {

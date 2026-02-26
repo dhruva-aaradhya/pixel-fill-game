@@ -1,4 +1,4 @@
-export type ShooterColor = 'red' | 'crimson' | 'pink';
+export type ShooterColor = 'red' | 'purple' | 'gold';
 
 export type CellState = 'empty' | 'hidden' | 'unfilled' | 'filling' | 'solidified';
 
@@ -38,7 +38,7 @@ export interface ConveyorShooter extends Shooter {
 export interface GameState {
   grid: Cell[][];
   exposedLayers: number[];
-  line: Shooter[];
+  queues: Record<ShooterColor, Shooter[]>;
   holding: (Shooter | null)[];
   conveyor: ConveyorShooter[];
   status: GameStatus;

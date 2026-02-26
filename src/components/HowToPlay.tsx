@@ -27,11 +27,11 @@ export default function HowToPlay() {
           <Section icon={<Gem className="w-4 h-4 text-[#ff3355]" />} title="The Board">
             A pixel art picture made of colored gem cells. Fill every cell to reveal the picture.
           </Section>
-          <Section icon={<Layers className="w-4 h-4 text-[#c0192c]" />} title="Layers">
+          <Section icon={<Layers className="w-4 h-4 text-[#8b5cf6]" />} title="Layers">
             Cells are layered front-to-back. You must solidify the outer layer (red) before the
-            inner layer (crimson) becomes accessible, and so on.
+            inner layer (purple) becomes accessible, then gold.
           </Section>
-          <Section icon={<Target className="w-4 h-4 text-[#ff6eb4]" />} title="Shooters">
+          <Section icon={<Target className="w-4 h-4 text-[#fbbf24]" />} title="Shooters">
             Each shooter has a color and ammo count. Tap it to send it around the board on the
             conveyor track. It fires at matching cells as it passes.
           </Section>

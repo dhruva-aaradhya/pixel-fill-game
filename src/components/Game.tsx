@@ -1,8 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
-import { GameState, Level, ColorConfig } from '@/types/game';
-import { createGameState, deployShooter, processConveyorTick } from '@/utils/gameLogic';
+import { GameState, Level, ShooterColor } from '@/types/game';
+import { createGameState, deployFromQueue, deployFromHolding, processConveyorTick } from '@/utils/gameLogic';
 import { MAX_CONVEYOR, TICK_MS } from '@/utils/trackPositions';
 import Board from './Board';
 import HoldingZone from './HoldingZone';
@@ -71,15 +71,15 @@ export default function Game({ level, levelNumber, onComplete, onBack }: GamePro
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [level, levelNumber]);
 
-  const handleDeployFromLine = useCallback((shooterId: string) => {
+  const handleDeployFromQueue = useCallback((color: ShooterColor) => {
     if (stateRef.current.status !== 'playing') return;
-    stateRef.current = deployShooter(stateRef.current, shooterId, 'line');
+    stateRef.current = deployFromQueue(stateRef.current, color);
     forceRender();
   }, []);
 
   const handleDeployFromHolding = useCallback((shooterId: string) => {
     if (stateRef.current.status !== 'playing') return;
-    stateRef.current = deployShooter(stateRef.current, shooterId, 'holding');
+    stateRef.current = deployFromHolding(stateRef.current, shooterId);
     forceRender();
   }, []);
 
@@ -141,9 +141,9 @@ export default function Game({ level, levelNumber, onComplete, onBack }: GamePro
       />
 
       <ShooterLine
-        line={s.line}
+        queues={s.queues}
         colors={level.colors}
-        onDeploy={handleDeployFromLine}
+        onDeploy={handleDeployFromQueue}
         conveyorFull={conveyorFull}
       />
 

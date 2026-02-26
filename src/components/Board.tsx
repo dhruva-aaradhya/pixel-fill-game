@@ -34,7 +34,7 @@ export default function Board({
       <ConveyorTrack conveyor={conveyor} colors={colors} />
 
       <div
-        className="absolute rounded-lg bg-[#0d0d1a]"
+        className="absolute rounded-lg"
         style={{
           top: TRACK_MARGIN,
           left: TRACK_MARGIN,

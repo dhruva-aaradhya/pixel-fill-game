@@ -2,8 +2,8 @@ import { Level, ColorConfig } from '@/types/game';
 
 export const COLORS: Record<number, ColorConfig> = {
   3: { layer: 3, hex: '#ff3355', name: 'red', glow: 'rgba(255,51,85,0.5)' },
-  2: { layer: 2, hex: '#c0192c', name: 'crimson', glow: 'rgba(192,25,44,0.5)' },
-  1: { layer: 1, hex: '#ff6eb4', name: 'pink', glow: 'rgba(255,110,180,0.5)' },
+  2: { layer: 2, hex: '#8b5cf6', name: 'purple', glow: 'rgba(139,92,246,0.5)' },
+  1: { layer: 1, hex: '#fbbf24', name: 'gold', glow: 'rgba(251,191,36,0.5)' },
 };
 
 export const HEART_MAP: number[][] = [
