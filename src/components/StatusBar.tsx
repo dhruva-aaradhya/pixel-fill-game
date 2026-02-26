@@ -7,7 +7,7 @@ interface StatusBarProps {
   status: GameStatus;
   conveyorCount: number;
   conveyorFull: boolean;
-  containerNotice: string | null;
+  layerNotice: string | null;
   queuesEmpty: boolean;
   holdingHasShooters: boolean;
 }
@@ -16,7 +16,7 @@ export default function StatusBar({
   status,
   conveyorCount,
   conveyorFull,
-  containerNotice,
+  layerNotice,
   queuesEmpty,
   holdingHasShooters,
 }: StatusBarProps) {
@@ -26,8 +26,8 @@ export default function StatusBar({
     message = 'Picture Complete!';
   } else if (status === 'lost') {
     message = 'Holding zone full — Game Over!';
-  } else if (containerNotice) {
-    message = `${containerNotice} unlocked!`;
+  } else if (layerNotice) {
+    message = `${layerNotice} layer unlocked!`;
   } else if (conveyorFull) {
     message = `Conveyor full (${conveyorCount}/${MAX_CONVEYOR}) — wait for a shooter to finish`;
   } else if (queuesEmpty && holdingHasShooters) {

@@ -17,14 +17,37 @@ export function resetIdCounter(): void {
   nextId = 0;
 }
 
+const DIRS: [number, number][] = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+
+function propagateExposure(grid: Cell[][]): void {
+  const size = grid.length;
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (let r = 0; r < size; r++) {
+      for (let c = 0; c < size; c++) {
+        const cell = grid[r][c];
+        if (cell.layer === 0 || cell.exposed) continue;
+        for (const [dr, dc] of DIRS) {
+          const nr = r + dr;
+          const nc = c + dc;
+          if (nr < 0 || nr >= size || nc < 0 || nc >= size) continue;
+          const neighbor = grid[nr][nc];
+          if (neighbor.layer > cell.layer && neighbor.solidified) {
+            cell.exposed = true;
+            changed = true;
+            break;
+          }
+        }
+      }
+    }
+  }
+}
+
 export function createGameState(level: Level, levelNumber: number): GameState {
   resetIdCounter();
 
-  const initialContainers = level.containers
-    .filter((c) => (level.containerDeps[c.id] ?? []).length === 0)
-    .map((c) => c.id);
-
-  const exposedSet = new Set(initialContainers);
+  const outermostLayer = level.layerOrder[0];
 
   const grid: Cell[][] = [];
   let totalCells = 0;
@@ -33,16 +56,14 @@ export function createGameState(level: Level, levelNumber: number): GameState {
     const row: Cell[] = [];
     for (let c = 0; c < level.gridSize; c++) {
       const layer = level.pixelMap[r][c];
-      const containerId = level.containerMap[r][c];
       if (layer > 0) totalCells++;
       row.push({
         row: r,
         col: c,
         layer,
-        containerId,
         hits: 0,
         solidified: false,
-        exposed: exposedSet.has(containerId),
+        exposed: layer === outermostLayer,
       });
     }
     grid.push(row);
@@ -52,7 +73,7 @@ export function createGameState(level: Level, levelNumber: number): GameState {
 
   return {
     grid,
-    exposedContainers: initialContainers,
+    exposedLayers: [outermostLayer],
     queues,
     holding: Array(MAX_HOLDING).fill(null),
     conveyor: [],
@@ -224,7 +245,7 @@ function getTargetAtPosition(
   return { row: blocker.row, col: blocker.col, side };
 }
 
-export function processConveyorTick(state: GameState, level: Level): GameState {
+export function processConveyorTick(state: GameState): GameState {
   if (state.status !== 'playing') return state;
 
   if (state.conveyor.length === 0) {
@@ -233,7 +254,7 @@ export function processConveyorTick(state: GameState, level: Level): GameState {
       recentHits: [],
       recentSolidified: [],
       stats: { ...state.stats, elapsedMs: state.stats.elapsedMs + TICK_MS },
-    } as GameState;
+    };
   }
 
   const grid = state.grid.map((row) => row.map((cell) => ({ ...cell })));
@@ -280,40 +301,17 @@ export function processConveyorTick(state: GameState, level: Level): GameState {
     newConveyor.push({ ...shooter, trackPos: newPos, ammo });
   }
 
-  const exposedSet = new Set(state.exposedContainers);
+  propagateExposure(grid);
 
-  const containerDone = new Map<number, boolean>();
-  for (const cdef of level.containers) {
-    containerDone.set(cdef.id, true);
-  }
-  for (const row of grid) {
-    for (const cell of row) {
-      if (cell.containerId > 0 && !cell.solidified) {
-        containerDone.set(cell.containerId, false);
-      }
+  const exposedLayers = [...state.exposedLayers];
+  for (const l of state.layerOrder) {
+    if (!exposedLayers.includes(l)) {
+      const hasExposed = grid.some((row) =>
+        row.some((cell) => cell.layer === l && cell.exposed)
+      );
+      if (hasExposed) exposedLayers.push(l);
     }
   }
-
-  let changed = true;
-  while (changed) {
-    changed = false;
-    for (const cdef of level.containers) {
-      if (exposedSet.has(cdef.id)) continue;
-      const deps = level.containerDeps[cdef.id] ?? [];
-      const allDepsDone = deps.every((d) => containerDone.get(d) === true);
-      if (allDepsDone) {
-        exposedSet.add(cdef.id);
-        for (const row of grid) {
-          for (const cell of row) {
-            if (cell.containerId === cdef.id) cell.exposed = true;
-          }
-        }
-        changed = true;
-      }
-    }
-  }
-
-  const exposedContainers = Array.from(exposedSet);
 
   const newHolding = [...state.holding];
   let lost = false;
@@ -336,7 +334,7 @@ export function processConveyorTick(state: GameState, level: Level): GameState {
   return {
     ...state,
     grid,
-    exposedContainers,
+    exposedLayers,
     conveyor: newConveyor,
     holding: newHolding,
     status: lost ? 'lost' : won ? 'won' : 'playing',

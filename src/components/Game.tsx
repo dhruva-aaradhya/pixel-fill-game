@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
-import { ContainerEdges, GameState, Level } from '@/types/game';
+import { GameState, LayerEdges, Level } from '@/types/game';
 import { createGameState, deployFromQueue, deployFromHolding, processConveyorTick } from '@/utils/gameLogic';
 import { MAX_CONVEYOR, TICK_MS } from '@/utils/trackPositions';
 import Board from './Board';
@@ -19,22 +19,22 @@ interface GameProps {
   onBack: () => void;
 }
 
-function computeContainerEdges(cmap: number[][]): ContainerEdges[][] {
-  const rows = cmap.length;
-  const cols = rows > 0 ? cmap[0].length : 0;
-  const result: ContainerEdges[][] = [];
+function computeLayerEdges(pixelMap: number[][]): LayerEdges[][] {
+  const rows = pixelMap.length;
+  const cols = rows > 0 ? pixelMap[0].length : 0;
+  const result: LayerEdges[][] = [];
   for (let r = 0; r < rows; r++) {
-    const row: ContainerEdges[] = [];
+    const row: LayerEdges[] = [];
     for (let c = 0; c < cols; c++) {
-      const cid = cmap[r][c];
-      if (cid === 0) {
+      const layer = pixelMap[r][c];
+      if (layer === 0) {
         row.push({ top: false, right: false, bottom: false, left: false });
       } else {
         row.push({
-          top: r === 0 || cmap[r - 1][c] !== cid,
-          right: c === cols - 1 || cmap[r][c + 1] !== cid,
-          bottom: r === rows - 1 || cmap[r + 1][c] !== cid,
-          left: c === 0 || cmap[r][c - 1] !== cid,
+          top: r === 0 || pixelMap[r - 1][c] !== layer,
+          right: c === cols - 1 || pixelMap[r][c + 1] !== layer,
+          bottom: r === rows - 1 || pixelMap[r + 1][c] !== layer,
+          left: c === 0 || pixelMap[r][c - 1] !== layer,
         });
       }
     }
@@ -45,21 +45,21 @@ function computeContainerEdges(cmap: number[][]): ContainerEdges[][] {
 
 export default function Game({ level, levelNumber, onComplete, onBack }: GameProps) {
   const stateRef = useRef<GameState>(createGameState(level, levelNumber));
-  const edgesGrid = useMemo(() => computeContainerEdges(level.containerMap), [level]);
+  const layerEdges = useMemo(() => computeLayerEdges(level.pixelMap), [level]);
   const [, forceRender] = useReducer((x: number) => x + 1, 0);
   const [overlayStatus, setOverlayStatus] = useState<'won' | 'lost' | null>(null);
   const completedRef = useRef(false);
-  const [containerNotice, setContainerNotice] = useState<string | null>(null);
-  const prevExposedIds = useRef<Set<number>>(
-    new Set(stateRef.current.exposedContainers)
+  const [layerNotice, setLayerNotice] = useState<string | null>(null);
+  const prevExposedLayers = useRef<Set<number>>(
+    new Set(stateRef.current.exposedLayers)
   );
 
   useEffect(() => {
     stateRef.current = createGameState(level, levelNumber);
     completedRef.current = false;
-    prevExposedIds.current = new Set(stateRef.current.exposedContainers);
+    prevExposedLayers.current = new Set(stateRef.current.exposedLayers);
     setOverlayStatus(null);
-    setContainerNotice(null);
+    setLayerNotice(null);
     forceRender();
   }, [level, levelNumber]);
 
@@ -78,7 +78,7 @@ export default function Game({ level, levelNumber, onComplete, onBack }: GamePro
 
       let ticked = false;
       while (acc >= TICK_MS) {
-        stateRef.current = processConveyorTick(stateRef.current, level);
+        stateRef.current = processConveyorTick(stateRef.current);
         acc -= TICK_MS;
         ticked = true;
       }
@@ -86,15 +86,16 @@ export default function Game({ level, levelNumber, onComplete, onBack }: GamePro
       if (ticked) {
         const s = stateRef.current;
 
-        const newlyExposed = s.exposedContainers.filter(
-          (id) => !prevExposedIds.current.has(id)
+        const newlyExposed = s.exposedLayers.filter(
+          (l) => !prevExposedLayers.current.has(l)
         );
         if (newlyExposed.length > 0) {
-          for (const id of s.exposedContainers) prevExposedIds.current.add(id);
-          const cdef = level.containers.find((c) => c.id === newlyExposed[0]);
-          if (cdef) {
-            setContainerNotice(cdef.name);
-            setTimeout(() => setContainerNotice(null), 2500);
+          for (const l of s.exposedLayers) prevExposedLayers.current.add(l);
+          const cfg = level.colors[newlyExposed[0]];
+          if (cfg) {
+            const name = cfg.name.charAt(0).toUpperCase() + cfg.name.slice(1);
+            setLayerNotice(name);
+            setTimeout(() => setLayerNotice(null), 2500);
           }
         }
 
@@ -164,7 +165,7 @@ export default function Game({ level, levelNumber, onComplete, onBack }: GamePro
         status={s.status}
         conveyorCount={s.conveyor.length}
         conveyorFull={conveyorFull}
-        containerNotice={containerNotice}
+        layerNotice={layerNotice}
         queuesEmpty={queuesEmpty}
         holdingHasShooters={holdingHasShooters}
       />
@@ -176,7 +177,7 @@ export default function Game({ level, levelNumber, onComplete, onBack }: GamePro
         capacity={s.capacity}
         recentHits={s.recentHits}
         recentSolidified={s.recentSolidified}
-        edgesGrid={edgesGrid}
+        layerEdges={layerEdges}
       />
 
       <HoldingZone

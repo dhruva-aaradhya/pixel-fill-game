@@ -1,7 +1,7 @@
 'use client';
 
 import { memo, useEffect, useRef } from 'react';
-import { Cell as CellType, ColorConfig, ContainerEdges, TrackSide } from '@/types/game';
+import { Cell as CellType, ColorConfig, LayerEdges, TrackSide } from '@/types/game';
 import { getCellState } from '@/utils/gameLogic';
 import { CELL_SIZE } from '@/utils/trackPositions';
 
@@ -11,7 +11,7 @@ interface CellProps {
   capacity: number;
   hitSide: TrackSide | null;
   solidifySide: TrackSide | null;
-  containerEdges: ContainerEdges;
+  layerEdges: LayerEdges;
 }
 
 const FILL_ANIM_MAP: Record<TrackSide, string> = {
@@ -23,20 +23,7 @@ const FILL_ANIM_MAP: Record<TrackSide, string> = {
 
 const SEPARATOR = '#0d0d20';
 
-function buildBorders(
-  edges: ContainerEdges,
-  innerColor: string,
-  innerWidth: string,
-): React.CSSProperties {
-  return {
-    borderTop: edges.top ? `2.5px solid ${SEPARATOR}` : `${innerWidth} solid ${innerColor}`,
-    borderRight: edges.right ? `2.5px solid ${SEPARATOR}` : `${innerWidth} solid ${innerColor}`,
-    borderBottom: edges.bottom ? `2.5px solid ${SEPARATOR}` : `${innerWidth} solid ${innerColor}`,
-    borderLeft: edges.left ? `2.5px solid ${SEPARATOR}` : `${innerWidth} solid ${innerColor}`,
-  };
-}
-
-function CellComponent({ cell, color, capacity, hitSide, solidifySide, containerEdges }: CellProps) {
+function CellComponent({ cell, color, capacity, hitSide, solidifySide, layerEdges }: CellProps) {
   const ref = useRef<HTMLDivElement>(null);
   const state = getCellState(cell);
 
@@ -73,45 +60,57 @@ function CellComponent({ cell, color, capacity, hitSide, solidifySide, container
 
     switch (state) {
       case 'hidden':
-        bg = color ? `${hex}18` : '#18182e';
+        bg = `${hex}18`;
         boxShadow = `0 0 0 1px ${hex}20`;
         borderRadius = '1px';
         opacity = 0.6;
         break;
 
-      case 'unfilled':
-        bg = color ? `${hex}15` : '#0e0e1e';
-        borderStyle = buildBorders(containerEdges, `${hex}60`, '2px');
+      case 'unfilled': {
+        bg = `${hex}15`;
+        const innerBorder = `2px solid ${hex}60`;
+        const edgeBorder = `2.5px solid ${SEPARATOR}`;
+        borderStyle = {
+          borderTop: layerEdges.top ? edgeBorder : innerBorder,
+          borderRight: layerEdges.right ? edgeBorder : innerBorder,
+          borderBottom: layerEdges.bottom ? edgeBorder : innerBorder,
+          borderLeft: layerEdges.left ? edgeBorder : innerBorder,
+        };
         boxShadow = `inset 0 2px 6px rgba(0,0,0,0.5), inset 0 0 10px ${hex}25`;
         borderRadius = '4px';
         break;
+      }
 
-      case 'filling':
-        bg = color
-          ? `linear-gradient(to top, ${hex} ${fillPercent}%, #0e0e1e ${fillPercent}%)`
-          : '#0e0e1e';
-        borderStyle = buildBorders(containerEdges, `${hex}60`, '2px');
+      case 'filling': {
+        bg = `linear-gradient(to top, ${hex} ${fillPercent}%, #0e0e1e ${fillPercent}%)`;
+        const innerBorder = `2px solid ${hex}60`;
+        const edgeBorder = `2.5px solid ${SEPARATOR}`;
+        borderStyle = {
+          borderTop: layerEdges.top ? edgeBorder : innerBorder,
+          borderRight: layerEdges.right ? edgeBorder : innerBorder,
+          borderBottom: layerEdges.bottom ? edgeBorder : innerBorder,
+          borderLeft: layerEdges.left ? edgeBorder : innerBorder,
+        };
         boxShadow = `inset 0 1px 3px rgba(0,0,0,0.4), 0 0 8px ${color?.glow ?? 'transparent'}`;
         borderRadius = '4px';
         break;
+      }
 
       case 'solidified': {
-        bg = color
-          ? `linear-gradient(135deg, ${hex} 40%, rgba(255,255,255,0.25) 120%)`
-          : '#fff';
+        bg = `linear-gradient(135deg, ${hex} 40%, rgba(255,255,255,0.25) 120%)`;
 
         const shadowParts: string[] = [];
-        if (!containerEdges.top) shadowParts.push(`0 -2px 0 0 ${hex}`);
-        if (!containerEdges.bottom) shadowParts.push(`0 2px 0 0 ${hex}`);
-        if (!containerEdges.left) shadowParts.push(`-2px 0 0 0 ${hex}`);
-        if (!containerEdges.right) shadowParts.push(`2px 0 0 0 ${hex}`);
+        if (!layerEdges.top) shadowParts.push(`0 -2px 0 0 ${hex}`);
+        if (!layerEdges.bottom) shadowParts.push(`0 2px 0 0 ${hex}`);
+        if (!layerEdges.left) shadowParts.push(`-2px 0 0 0 ${hex}`);
+        if (!layerEdges.right) shadowParts.push(`2px 0 0 0 ${hex}`);
         boxShadow = shadowParts.length > 0 ? shadowParts.join(', ') : 'none';
 
         borderStyle = {
-          borderTop: containerEdges.top ? `2.5px solid ${SEPARATOR}` : 'none',
-          borderRight: containerEdges.right ? `2.5px solid ${SEPARATOR}` : 'none',
-          borderBottom: containerEdges.bottom ? `2.5px solid ${SEPARATOR}` : 'none',
-          borderLeft: containerEdges.left ? `2.5px solid ${SEPARATOR}` : 'none',
+          borderTop: layerEdges.top ? `2.5px solid ${SEPARATOR}` : 'none',
+          borderRight: layerEdges.right ? `2.5px solid ${SEPARATOR}` : 'none',
+          borderBottom: layerEdges.bottom ? `2.5px solid ${SEPARATOR}` : 'none',
+          borderLeft: layerEdges.left ? `2.5px solid ${SEPARATOR}` : 'none',
         };
 
         borderRadius = '1px';
@@ -145,9 +144,8 @@ export default memo(CellComponent, (prev, next) => {
     prev.cell.hits === next.cell.hits &&
     prev.cell.solidified === next.cell.solidified &&
     prev.cell.exposed === next.cell.exposed &&
-    prev.cell.containerId === next.cell.containerId &&
     prev.hitSide === next.hitSide &&
     prev.solidifySide === next.solidifySide &&
-    prev.containerEdges === next.containerEdges
+    prev.layerEdges === next.layerEdges
   );
 });
