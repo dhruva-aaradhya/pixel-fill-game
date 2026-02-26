@@ -59,9 +59,10 @@ function CellComponent({ cell, color, capacity, hitSide, solidifySide }: CellPro
 
     switch (state) {
       case 'hidden':
-        bg = '#18182e';
+        bg = color ? `${color.hex}10` : '#18182e';
+        outline = `1.5px solid ${color ? color.hex + '25' : TRAY_WALL}`;
         boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.6)';
-        opacity = 0.5;
+        opacity = 0.45;
         break;
       case 'unfilled':
         bg = color ? `${color.hex}18` : '#0e0e1e';
