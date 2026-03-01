@@ -245,6 +245,10 @@ function firstCellInPath(
   }
 }
 
+const OPPOSITE_SIDE: Record<TrackSide, TrackSide> = {
+  left: 'right', right: 'left', top: 'bottom', bottom: 'top',
+};
+
 function getTargetAtPosition(
   grid: Cell[][],
   trackPos: number,
@@ -259,7 +263,11 @@ function getTargetAtPosition(
 
   if (!blocker) return null;
   if (blocker.layer !== layer || !blocker.exposed) return null;
-  if (mode !== 'fill' && blocker.validSide && blocker.validSide !== side) return null;
+
+  if (blocker.validSide) {
+    if (mode === 'flap' && blocker.validSide !== side) return null;
+    if (mode === 'domino' && blocker.validSide !== side && OPPOSITE_SIDE[blocker.validSide] !== side) return null;
+  }
 
   return { row: blocker.row, col: blocker.col, side };
 }
