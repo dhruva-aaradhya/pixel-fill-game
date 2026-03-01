@@ -1,6 +1,7 @@
 import {
   Cell,
   ConveyorShooter,
+  GameMode,
   GameState,
   Level,
   Shooter,
@@ -54,10 +55,11 @@ function propagateExposure(grid: Cell[][], layerOrder: number[]): void {
   }
 }
 
-export function createGameState(level: Level, levelNumber: number): GameState {
+export function createGameState(level: Level, levelNumber: number, mode: GameMode = 'fill'): GameState {
   resetIdCounter();
 
   const outermostLayer = level.layerOrder[0];
+  const dirMap = (mode !== 'fill') ? level.directionMap : undefined;
 
   const grid: Cell[][] = [];
   let totalCells = 0;
@@ -67,14 +69,18 @@ export function createGameState(level: Level, levelNumber: number): GameState {
     for (let c = 0; c < level.gridSize; c++) {
       const layer = level.pixelMap[r][c];
       if (layer > 0) totalCells++;
-      row.push({
+      const cell: Cell = {
         row: r,
         col: c,
         layer,
         hits: 0,
         solidified: false,
         exposed: layer === outermostLayer,
-      });
+      };
+      if (dirMap && layer > 0) {
+        cell.validSide = dirMap[r][c];
+      }
+      row.push(cell);
     }
     grid.push(row);
   }
@@ -91,6 +97,7 @@ export function createGameState(level: Level, levelNumber: number): GameState {
     levelNumber,
     capacity: level.capacity,
     layerOrder: level.layerOrder,
+    mode,
     stats: {
       shootersDeployed: 0,
       lapsCompleted: 0,
@@ -241,7 +248,8 @@ function firstCellInPath(
 function getTargetAtPosition(
   grid: Cell[][],
   trackPos: number,
-  layer: number
+  layer: number,
+  mode: GameMode
 ): { row: number; col: number; side: TrackSide } | null {
   const rule = getTrackFiringRule(trackPos);
   if (!rule) return null;
@@ -251,6 +259,7 @@ function getTargetAtPosition(
 
   if (!blocker) return null;
   if (blocker.layer !== layer || !blocker.exposed) return null;
+  if (mode !== 'fill' && blocker.validSide && blocker.validSide !== side) return null;
 
   return { row: blocker.row, col: blocker.col, side };
 }
@@ -292,7 +301,7 @@ export function processConveyorTick(state: GameState): GameState {
     let ammo = shooter.ammo;
 
     if (newPos >= 0) {
-      const target = getTargetAtPosition(grid, newPos, shooter.layer);
+      const target = getTargetAtPosition(grid, newPos, shooter.layer, state.mode);
       if (target) {
         const cell = grid[target.row][target.col];
         cell.hits++;

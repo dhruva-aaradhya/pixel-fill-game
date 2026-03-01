@@ -8,6 +8,8 @@ export type ScreenState = 'lobby' | 'game';
 
 export type TrackSide = 'left' | 'top' | 'right' | 'bottom';
 
+export type GameMode = 'fill' | 'flap' | 'domino';
+
 export interface ColorConfig {
   layer: number;
   hex: string;
@@ -29,6 +31,7 @@ export interface Cell {
   hits: number;
   solidified: boolean;
   exposed: boolean;
+  validSide?: TrackSide;
 }
 
 export interface Shooter {
@@ -53,6 +56,7 @@ export interface GameState {
   stats: GameStats;
   capacity: number;
   layerOrder: number[];
+  mode: GameMode;
   recentHits: { row: number; col: number; side: TrackSide }[];
   recentSolidified: { row: number; col: number; side: TrackSide }[];
 }
@@ -72,6 +76,7 @@ export interface Level {
   colors: Record<number, ColorConfig>;
   capacity: number;
   layerOrder: number[];
+  directionMap?: TrackSide[][];
 }
 
 export interface TrackPosition {

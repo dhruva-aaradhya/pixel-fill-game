@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
-import { GameState, LayerEdges, Level } from '@/types/game';
+import { GameMode, GameState, LayerEdges, Level } from '@/types/game';
 import { createGameState, deployFromQueue, deployFromHolding, processConveyorTick } from '@/utils/gameLogic';
 import { MAX_CONVEYOR, TICK_MS } from '@/utils/trackPositions';
 import Board from './Board';
@@ -15,6 +15,7 @@ import { ArrowLeft } from 'lucide-react';
 interface GameProps {
   level: Level;
   levelNumber: number;
+  mode: GameMode;
   onComplete: (stats: GameState['stats'], won: boolean) => void;
   onBack: () => void;
 }
@@ -43,8 +44,8 @@ function computeLayerEdges(pixelMap: number[][]): LayerEdges[][] {
   return result;
 }
 
-export default function Game({ level, levelNumber, onComplete, onBack }: GameProps) {
-  const stateRef = useRef<GameState>(createGameState(level, levelNumber));
+export default function Game({ level, levelNumber, mode, onComplete, onBack }: GameProps) {
+  const stateRef = useRef<GameState>(createGameState(level, levelNumber, mode));
   const layerEdges = useMemo(() => computeLayerEdges(level.pixelMap), [level]);
   const [, forceRender] = useReducer((x: number) => x + 1, 0);
   const [overlayStatus, setOverlayStatus] = useState<'won' | 'lost' | null>(null);
@@ -55,13 +56,13 @@ export default function Game({ level, levelNumber, onComplete, onBack }: GamePro
   );
 
   useEffect(() => {
-    stateRef.current = createGameState(level, levelNumber);
+    stateRef.current = createGameState(level, levelNumber, mode);
     completedRef.current = false;
     prevExposedLayers.current = new Set(stateRef.current.exposedLayers);
     setOverlayStatus(null);
     setLayerNotice(null);
     forceRender();
-  }, [level, levelNumber]);
+  }, [level, levelNumber, mode]);
 
   useEffect(() => {
     let last = 0;
@@ -132,11 +133,11 @@ export default function Game({ level, levelNumber, onComplete, onBack }: GamePro
   }, []);
 
   const handlePlayAgain = useCallback(() => {
-    stateRef.current = createGameState(level, levelNumber);
+    stateRef.current = createGameState(level, levelNumber, mode);
     completedRef.current = false;
     setOverlayStatus(null);
     forceRender();
-  }, [level, levelNumber]);
+  }, [level, levelNumber, mode]);
 
   const s = stateRef.current;
   const conveyorFull = s.conveyor.length >= MAX_CONVEYOR;
@@ -178,6 +179,7 @@ export default function Game({ level, levelNumber, onComplete, onBack }: GamePro
         recentHits={s.recentHits}
         recentSolidified={s.recentSolidified}
         layerEdges={layerEdges}
+        mode={mode}
       />
 
       <HoldingZone

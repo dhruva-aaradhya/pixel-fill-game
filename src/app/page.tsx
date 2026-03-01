@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { PlayerProgress, ScreenState, GameStats } from '@/types/game';
+import { GameMode, PlayerProgress, ScreenState, GameStats } from '@/types/game';
 import { LEVELS } from '@/utils/levelData';
 import Lobby from '@/components/Lobby';
 import Game from '@/components/Game';
@@ -27,14 +27,16 @@ function saveProgress(p: PlayerProgress): void {
 export default function Home() {
   const [screen, setScreen] = useState<ScreenState>('lobby');
   const [levelIndex, setLevelIndex] = useState(0);
+  const [gameMode, setGameMode] = useState<GameMode>('fill');
   const [progress, setProgress] = useState<PlayerProgress | null>(null);
 
   useEffect(() => {
     setProgress(loadProgress());
   }, []);
 
-  const handlePlay = useCallback((idx: number) => {
+  const handlePlay = useCallback((idx: number, mode: GameMode) => {
     setLevelIndex(idx);
+    setGameMode(mode);
     setScreen('game');
   }, []);
 
@@ -82,6 +84,7 @@ export default function Home() {
     <Game
       level={level}
       levelNumber={levelIndex + 1}
+      mode={gameMode}
       onComplete={handleComplete}
       onBack={handleBack}
     />

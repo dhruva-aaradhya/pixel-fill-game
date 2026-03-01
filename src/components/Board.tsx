@@ -1,6 +1,6 @@
 'use client';
 
-import { Cell as CellType, ConveyorShooter, ColorConfig, LayerEdges, TrackSide } from '@/types/game';
+import { Cell as CellType, ConveyorShooter, ColorConfig, GameMode, LayerEdges, TrackSide } from '@/types/game';
 import CellComponent from './Cell';
 import ConveyorTrack from './ConveyorTrack';
 import { CELL_SIZE, GAP, GRID_SIZE, TRACK_MARGIN, WRAPPER_SIZE } from '@/utils/trackPositions';
@@ -13,6 +13,7 @@ interface BoardProps {
   recentHits: { row: number; col: number; side: TrackSide }[];
   recentSolidified: { row: number; col: number; side: TrackSide }[];
   layerEdges: LayerEdges[][];
+  mode: GameMode;
 }
 
 function findSide(
@@ -32,6 +33,7 @@ export default function Board({
   recentHits,
   recentSolidified,
   layerEdges,
+  mode,
 }: BoardProps) {
   return (
     <div
@@ -62,6 +64,7 @@ export default function Board({
               hitSide={findSide(recentHits, cell.row, cell.col)}
               solidifySide={findSide(recentSolidified, cell.row, cell.col)}
               layerEdges={layerEdges[cell.row][cell.col]}
+              mode={mode}
             />
           );
         })}
